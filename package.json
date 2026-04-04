@@ -1,0 +1,20 @@
+{
+  "name": "crestmont-social-tracker",
+  "version": "1.0.0",
+  "description": "Daily follower tracker for Crestmont Hotels social profiles.",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "scrape": "node src/index.js",
+    "dry-run": "DRY_RUN=true node src/index.js",
+    "check": "node --check src/index.js && node --check src/scrapers.js && node --check src/googleSheets.js && node --check src/profiles.js"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.5",
+    "googleapis": "^150.0.1",
+    "playwright": "^1.52.0"
+  }
+}
