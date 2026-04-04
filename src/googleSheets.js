@@ -1,17 +1,6 @@
 const { google } = require("googleapis");
 
-const HEADER_ROW = [
-  "date_local",
-  "timestamp_utc",
-  "platform",
-  "profile_id",
-  "label",
-  "profile_url",
-  "followers",
-  "following",
-  "likes",
-  "posts"
-];
+const HEADER_ROW = ["Date", "Instagram Followers", "Facebook Followers"];
 
 function formatDateInTimezone(date, timezone) {
   return new Intl.DateTimeFormat("en-CA", {
@@ -52,9 +41,7 @@ async function getSheetsClient() {
 }
 
 async function ensureSheetExists(sheets, spreadsheetId, tabName) {
-  const spreadsheet = await sheets.spreadsheets.get({
-    spreadsheetId
-  });
+  const spreadsheet = await sheets.spreadsheets.get({ spreadsheetId });
 
   const hasSheet = (spreadsheet.data.sheets || []).some(
     (sheet) => sheet.properties && sheet.properties.title === tabName
@@ -67,15 +54,7 @@ async function ensureSheetExists(sheets, spreadsheetId, tabName) {
   await sheets.spreadsheets.batchUpdate({
     spreadsheetId,
     requestBody: {
-      requests: [
-        {
-          addSheet: {
-            properties: {
-              title: tabName
-            }
-          }
-        }
-      ]
+      requests: [{ addSheet: { properties: { title: tabName } } }]
     }
   });
 }
@@ -96,29 +75,21 @@ async function ensureHeaderRow(sheets, spreadsheetId, tabName) {
     spreadsheetId,
     range: `${tabName}!1:1`,
     valueInputOption: "RAW",
-    requestBody: {
-      values: [HEADER_ROW]
-    }
+    requestBody: { values: [HEADER_ROW] }
   });
 }
 
-function buildRows(results, timezone) {
-  return results.map((item) => {
-    const date = new Date(item.scrapedAtUtc);
+function buildRow(results, timezone) {
+  const date = formatDateInTimezone(new Date(results[0].scrapedAtUtc), timezone);
 
-    return [
-      formatDateInTimezone(date, timezone),
-      item.scrapedAtUtc,
-      item.platform,
-      item.id,
-      item.label,
-      item.url,
-      item.followers || "",
-      item.following || "",
-      item.likes || "",
-      item.posts || ""
-    ];
-  });
+  const instagram = results.find((r) => r.platform === "instagram");
+  const facebook = results.find((r) => r.platform === "facebook");
+
+  return [
+    date,
+    instagram ? instagram.followers || "" : "",
+    facebook ? facebook.followers || "" : ""
+  ];
 }
 
 async function appendSnapshotRows(results) {
@@ -137,15 +108,11 @@ async function appendSnapshotRows(results) {
 
   await sheets.spreadsheets.values.append({
     spreadsheetId,
-    range: `${tabName}!A:J`,
+    range: `${tabName}!A:C`,
     valueInputOption: "RAW",
     insertDataOption: "INSERT_ROWS",
-    requestBody: {
-      values: buildRows(results, timezone)
-    }
+    requestBody: { values: [buildRow(results, timezone)] }
   });
 }
 
-module.exports = {
-  appendSnapshotRows
-};
+module.exports = { appendSnapshotRows };
