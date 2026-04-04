@@ -1,4 +1,5 @@
 const { chromium } = require("playwright");
+const https = require("https");
 
 function parseCompactNumber(rawValue) {
   if (!rawValue) {
@@ -38,23 +39,6 @@ function matchCount(text, patterns) {
   return null;
 }
 
-function extractInstagramStats(text) {
-  return {
-    followers: matchCount(text, [
-      /([0-9][0-9.,]*\s*[KMB]?)\s+Followers/i,
-      /Followers[^0-9]*([0-9][0-9.,]*\s*[KMB]?)/i
-    ]),
-    following: matchCount(text, [
-      /([0-9][0-9.,]*\s*[KMB]?)\s+Following/i,
-      /Following[^0-9]*([0-9][0-9.,]*\s*[KMB]?)/i
-    ]),
-    posts: matchCount(text, [
-      /([0-9][0-9.,]*\s*[KMB]?)\s+Posts/i,
-      /Posts[^0-9]*([0-9][0-9.,]*\s*[KMB]?)/i
-    ])
-  };
-}
-
 function extractFacebookStats(text) {
   return {
     followers: matchCount(text, [
@@ -88,13 +72,55 @@ async function collectPageSignals(page) {
     "";
 
   const bodyText = (await page.locator("body").innerText().catch(() => "")) || "";
-  const html = (await page.content().catch(() => "")) || "";
 
   // Exclude raw HTML — it contains href/attribute noise (e.g. /followers/) that
   // confuses regex patterns and produces false matches.
   return [metaDescription, title, bodyText]
     .filter(Boolean)
     .join("\n");
+}
+
+function httpGet(url) {
+  return new Promise((resolve, reject) => {
+    const req = https.get(url, (res) => {
+      let body = "";
+      res.on("data", (chunk) => (body += chunk));
+      res.on("end", () => resolve({ status: res.statusCode, body }));
+    });
+    req.on("error", reject);
+    req.setTimeout(30_000, () => { req.destroy(); reject(new Error("HTTP timeout")); });
+  });
+}
+
+// Fetch Instagram stats via the Graph API — reliable from datacenter IPs,
+// no browser needed. Requires INSTAGRAM_ACCOUNT_ID and INSTAGRAM_PAGE_TOKEN env vars.
+async function scrapeInstagramGraph(profile) {
+  const accountId = process.env.INSTAGRAM_ACCOUNT_ID;
+  const pageToken = process.env.INSTAGRAM_PAGE_TOKEN;
+
+  if (!accountId || !pageToken) {
+    throw new Error("Missing INSTAGRAM_ACCOUNT_ID or INSTAGRAM_PAGE_TOKEN environment variables.");
+  }
+
+  const url =
+    `https://graph.facebook.com/v19.0/${accountId}` +
+    `?fields=username,followers_count,follows_count,media_count` +
+    `&access_token=${pageToken}`;
+
+  const { status, body } = await httpGet(url);
+  const data = JSON.parse(body);
+
+  if (status !== 200 || data.error) {
+    throw new Error(`Instagram Graph API error: ${data.error ? data.error.message : status}`);
+  }
+
+  return {
+    ...profile,
+    followers: data.followers_count || null,
+    following: data.follows_count || null,
+    posts: data.media_count || null,
+    scrapedAtUtc: new Date().toISOString()
+  };
 }
 
 function ensureFollowers(stats, platform, textSnippet) {
@@ -107,6 +133,11 @@ function ensureFollowers(stats, platform, textSnippet) {
 }
 
 async function scrapeProfile(browser, profile) {
+  // Instagram: use Graph API — headless browsers are blocked on datacenter IPs
+  if (profile.platform === "instagram") {
+    return scrapeInstagramGraph(profile);
+  }
+
   const page = await browser.newPage({
     userAgent:
       "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
@@ -120,10 +151,7 @@ async function scrapeProfile(browser, profile) {
   await page.waitForTimeout(5_000);
 
   const combinedText = await collectPageSignals(page);
-  const stats =
-    profile.platform === "instagram"
-      ? extractInstagramStats(combinedText)
-      : extractFacebookStats(combinedText);
+  const stats = extractFacebookStats(combinedText);
 
   ensureFollowers(stats, profile.platform, combinedText);
 
@@ -159,6 +187,5 @@ async function scrapeProfiles(profiles) {
 module.exports = {
   scrapeProfiles,
   parseCompactNumber,
-  extractInstagramStats,
   extractFacebookStats
 };

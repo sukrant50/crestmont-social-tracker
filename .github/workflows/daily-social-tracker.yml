@@ -31,4 +31,6 @@ jobs:
           GOOGLE_SHEET_TAB: ${{ secrets.GOOGLE_SHEET_TAB }}
           GOOGLE_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_JSON }}
           SHEET_TIMEZONE: Asia/Kolkata
+          INSTAGRAM_ACCOUNT_ID: ${{ secrets.INSTAGRAM_ACCOUNT_ID }}
+          INSTAGRAM_PAGE_TOKEN: ${{ secrets.INSTAGRAM_PAGE_TOKEN }}
         run: npm run start
