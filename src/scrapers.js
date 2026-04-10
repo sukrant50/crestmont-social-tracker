@@ -252,7 +252,12 @@ async function scrapeProfile(browser, profile) {
 
   // LinkedIn: plain HTTP fetch — headless browsers get blocked / CAPTCHA'd
   if (profile.platform === "linkedin") {
-    return scrapeLinkedIn(profile);
+    try {
+      return await scrapeLinkedIn(profile);
+    } catch (err) {
+      console.warn(`LinkedIn scrape failed (skipping): ${err.message}`);
+      return { ...profile, followers: null, scrapedAtUtc: new Date().toISOString() };
+    }
   }
 
   // YouTube: API or HTML scrape — no browser needed
