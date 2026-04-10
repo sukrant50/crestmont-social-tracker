@@ -1,6 +1,6 @@
 const { google } = require("googleapis");
 
-const HEADER_ROW = ["Date", "Instagram Followers", "Facebook Followers"];
+const HEADER_ROW = ["Date", "Instagram Followers", "Facebook Followers", "LinkedIn Followers", "YouTube Subscribers"];
 
 function formatDateInTimezone(date, timezone) {
   return new Intl.DateTimeFormat("en-CA", {
@@ -84,11 +84,15 @@ function buildRow(results, timezone) {
 
   const instagram = results.find((r) => r.platform === "instagram");
   const facebook = results.find((r) => r.platform === "facebook");
+  const linkedin = results.find((r) => r.platform === "linkedin");
+  const youtube = results.find((r) => r.platform === "youtube");
 
   return [
     date,
     instagram ? instagram.followers || "" : "",
-    facebook ? facebook.followers || "" : ""
+    facebook ? facebook.followers || "" : "",
+    linkedin ? linkedin.followers || "" : "",
+    youtube ? youtube.followers || "" : ""
   ];
 }
 
@@ -108,7 +112,7 @@ async function appendSnapshotRows(results) {
 
   await sheets.spreadsheets.values.append({
     spreadsheetId,
-    range: `${tabName}!A:C`,
+    range: `${tabName}!A:E`,
     valueInputOption: "RAW",
     insertDataOption: "INSERT_ROWS",
     requestBody: { values: [buildRow(results, timezone)] }

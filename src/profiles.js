@@ -10,5 +10,17 @@ module.exports = [
     platform: "instagram",
     label: "crestmont_hotels",
     url: "https://www.instagram.com/crestmont_hotels/"
+  },
+  {
+    id: "linkedin-crestmont-hotels",
+    platform: "linkedin",
+    label: "Crestmont Hotels",
+    url: "https://www.linkedin.com/company/crestmonthotels"
+  },
+  {
+    id: "youtube-crestmont-hotels",
+    platform: "youtube",
+    label: "CrestmontHotels",
+    url: "https://www.youtube.com/@CrestmontHotels"
   }
 ];
