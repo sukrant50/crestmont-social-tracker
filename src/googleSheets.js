@@ -65,9 +65,13 @@ async function ensureHeaderRow(sheets, spreadsheetId, tabName) {
     range: `${tabName}!1:1`
   });
 
-  const header = response.data.values && response.data.values[0];
+  const existingHeader = response.data.values && response.data.values[0];
+  const isUpToDate =
+    existingHeader &&
+    existingHeader.length === HEADER_ROW.length &&
+    HEADER_ROW.every((col, i) => existingHeader[i] === col);
 
-  if (header && header.length) {
+  if (isUpToDate) {
     return;
   }
 
